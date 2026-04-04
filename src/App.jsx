@@ -722,6 +722,21 @@ function BookshelfScreen({ bookshelf, onBack }) {
       )}
 
       <button style={styles.secondaryBtn} onClick={onBack}>← 返回書單</button>
+
+      <div style={{ marginTop: 32, padding: '20px', background: '#FBEAF0', borderRadius: 12, textAlign: 'center', border: '1px solid #F5D3DE' }}>
+        <div style={{ fontSize: 14, color: '#993556', fontWeight: 600, marginBottom: 8 }}>💖 幫助我們做得更好</div>
+        <div style={{ fontSize: 12, color: '#993556', opacity: 0.85, marginBottom: 16 }}>
+          這只是一個 MVP 測試版！如果你喜歡這次的推薦，或是願意參與未來的正式版計畫，請給我們 1 分鐘的寶貴回饋！
+        </div>
+        <a 
+          href="https://forms.gle/zaxUokbXSZytioE38" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ ...styles.primaryBtn, display: 'inline-block', textDecoration: 'none', background: '#A13B5E', color: '#FFF', width: '100%' }}
+        >
+          📝 填寫試用心得 →
+        </a>
+      </div>
     </div>
   )
 }
