@@ -5,7 +5,7 @@
 
 import { buildResovelPrompt, BOOK_WHITELIST, getBookLink, getGoogleSearchLink } from './resovel-prompt.js'
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
 
 /**
  * 主要呼叫函式：先查快取，再呼叫 API
