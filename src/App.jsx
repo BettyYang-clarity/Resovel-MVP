@@ -163,7 +163,9 @@ function PreferencesScreen({ user, setUser, onSubmit, error }) {
       : [...prev[key], val],
   }))
 
-  const isReady = user.situation.trim().length > 5 || user.mode === 'explore'
+  const mbtiSelected = user.mbti !== '不知道' && !user.showMBTIQuiz
+  const situationReady = user.situation.trim().length > 5 || user.mode === 'explore'
+  const isReady = mbtiSelected && situationReady
 
   return (
     <div style={styles.screen}>
@@ -173,13 +175,12 @@ function PreferencesScreen({ user, setUser, onSubmit, error }) {
       <Section label="你的 MBTI">
         <ChipGroup
           options={MBTI_OPTIONS}
-          selected={[user.mbti]}
+          selected={user.showMBTIQuiz ? ['不知道'] : [user.mbti]}
           onToggle={v => {
             if (v === '不知道') {
-              update('showMBTIQuiz', true)
+              setUser(prev => ({ ...prev, mbti: '不知道', showMBTIQuiz: true }))
             } else {
-              update('mbti', v)
-              update('showMBTIQuiz', false)
+              setUser(prev => ({ ...prev, mbti: v, showMBTIQuiz: false }))
             }
           }}
           single
@@ -189,8 +190,7 @@ function PreferencesScreen({ user, setUser, onSubmit, error }) {
             <div style={styles.quizBoxTitle}>6 題快速判斷你的 MBTI 傾向</div>
             <MBTIQuiz
               onComplete={(mbti) => {
-                update('mbti', mbti)
-                update('showMBTIQuiz', false)
+                setUser(prev => ({ ...prev, mbti, showMBTIQuiz: false }))
               }}
             />
           </div>
@@ -313,7 +313,10 @@ function PreferencesScreen({ user, setUser, onSubmit, error }) {
       >
         幫我找書 →
       </button>
-      {!isReady && (
+      {!mbtiSelected && (
+        <p style={styles.hint}>請先選擇你的 MBTI，或完成快速測驗</p>
+      )}
+      {mbtiSelected && !situationReady && (
         <p style={styles.hint}>請描述你目前的狀況（至少 5 個字）</p>
       )}
     </div>
@@ -655,7 +658,7 @@ function getDefaultUser() {
     depthSlider: 40,
     langSlider: 60,
     mode: 'problem',
-    showMBTIQuiz: false,
+    showMBTIQuiz: true,  // 進頁面自動展開 MBTI 快速測驗
   }
 }
 
