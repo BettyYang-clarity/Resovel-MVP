@@ -7,9 +7,7 @@
 import { useState, useEffect } from 'react'
 import { getResovelRecommendation } from './lib/gemini.js'
 
-// ── 你的 Gemini API Key（之後移到 .env 檔）
-// 在 Google AI Studio 取得：https://aistudio.google.com/apikey
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'YOUR_API_KEY_HERE'
+
 
 function useBookshelf() {
   const [shelf, setShelf] = useState({})
@@ -34,7 +32,7 @@ export default function App() {
     setScreen('loading')
     setError(null)
     try {
-      const data = await getResovelRecommendation(user, GEMINI_API_KEY)
+      const data = await getResovelRecommendation(user)
       setResult(data)
       setScreen('result')
     } catch (err) {
