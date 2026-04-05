@@ -3,7 +3,7 @@
 // 改成呼叫自己的後端，不再直接暴露 API Key
 // ============================================================
 
-import { buildResovelPrompt, BOOK_WHITELIST } from './resovel-prompt.js'
+import { buildResovelPrompt, BOOK_WHITELIST, getGoogleSearchLink } from './resovel-prompt.js'
 
 export async function getResovelRecommendation(user) {
   const cacheKey = buildCacheKey(user)
@@ -40,6 +40,7 @@ function enrichResult(parsed) {
     return {
       ...book,
       bookLink: getBookLink(book.title),
+      googleLink: getGoogleSearchLink(book.title, book.author),
       confirmed: whitelist ? true : book.confirmed,
       whitelistSummary: whitelist?.summary || null,
     }
