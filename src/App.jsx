@@ -63,10 +63,13 @@ export default function App() {
   const [user, setUser] = useState(getDefaultUser())
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const bookshelf = useBookshelf()
 
   const handleSubmit = async () => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
     setScreen('loading')
     setError(null)
     try {
@@ -76,6 +79,8 @@ export default function App() {
     } catch (err) {
       setError(err.message)
       setScreen('preferences')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -90,6 +95,7 @@ export default function App() {
           setUser={setUser}
           onSubmit={handleSubmit}
           error={error}
+          isSubmitting={isSubmitting}
         />
       )}
       {screen === 'loading' && (
@@ -192,7 +198,7 @@ function OnboardingScreen({ onNext }) {
 // ══════════════════════════════════════════════
 // 畫面二：偏好設定
 // ══════════════════════════════════════════════
-function PreferencesScreen({ user, setUser, onSubmit, error }) {
+function PreferencesScreen({ user, setUser, onSubmit, error, isSubmitting }) {
   const [selectedSituation, setSelectedSituation] = useState(null)
   const update = (key, val) => setUser(prev => ({ ...prev, [key]: val }))
   const toggleArr = (key, val) => setUser(prev => ({
@@ -204,7 +210,7 @@ function PreferencesScreen({ user, setUser, onSubmit, error }) {
 
   const mbtiSelected = user.mbti !== '不知道' && !user.showMBTIQuiz
   const situationReady = user.situation.trim().length > 5 || user.mode === 'explore'
-  const isReady = mbtiSelected && situationReady
+  const isReady = mbtiSelected && situationReady && !isSubmitting
 
   return (
     <div style={styles.screen}>
@@ -376,7 +382,7 @@ function PreferencesScreen({ user, setUser, onSubmit, error }) {
         onClick={isReady ? onSubmit : undefined}
         disabled={!isReady}
       >
-        幫我找書 →
+        {isSubmitting ? '產生推薦中...' : '幫我找書 →'}
       </button>
       {!mbtiSelected && (
         <p style={styles.hint}>請先選擇你的 MBTI，或完成快速測驗</p>

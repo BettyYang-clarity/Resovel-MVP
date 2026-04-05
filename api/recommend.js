@@ -38,6 +38,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '缺少必要參數' })
     }
 
+    const cacheKey = buildPromptCacheKey(systemPrompt, userPrompt)
+    const cached = getPromptCache(cacheKey)
+    if (cached) {
+      return res.status(200).json({ result: cached })
+    }
+
     // API Key 在後端，前端永遠看不到
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY
     const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`
@@ -78,6 +84,7 @@ export default async function handler(req, res) {
     // 解析 JSON
     const clean = text.replace(/```json|```/g, '').trim()
     const result = JSON.parse(clean)
+    setPromptCache(cacheKey, result)
 
     return res.status(200).json({ result })
 
@@ -85,4 +92,36 @@ export default async function handler(req, res) {
     console.error('recommend handler error:', error)
     return res.status(500).json({ error: '伺服器錯誤，請稍後再試' })
   }
+}
+
+function buildPromptCacheKey(systemPrompt, userPrompt) {
+  return hashString(`${systemPrompt}\n---\n${userPrompt}`)
+}
+
+function getPromptCache(key) {
+  if (!global._promptCache) global._promptCache = {}
+  const entry = global._promptCache[key]
+  if (!entry) return null
+  if (Date.now() > entry.expiry) {
+    delete global._promptCache[key]
+    return null
+  }
+  return entry.data
+}
+
+function setPromptCache(key, data) {
+  if (!global._promptCache) global._promptCache = {}
+  global._promptCache[key] = {
+    data,
+    expiry: Date.now() + 10 * 60 * 1000,
+  }
+}
+
+function hashString(input) {
+  let hash = 0
+  for (let i = 0; i < input.length; i += 1) {
+    hash = ((hash << 5) - hash) + input.charCodeAt(i)
+    hash |= 0
+  }
+  return String(Math.abs(hash))
 }
