@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // RESOVEL · Gemini API 呼叫器（v2 · 安全版）
 // 改成呼叫自己的後端，不再直接暴露 API Key
 // ============================================================
@@ -16,7 +16,6 @@ export async function getResovelRecommendation(user) {
   const { systemPrompt, userPrompt } = buildResovelPrompt(user)
 
   try {
-    // 呼叫後端，不再直接呼叫 Gemini
     const response = await fetch('/api/recommend', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -58,6 +57,7 @@ function enrichResult(parsed) {
       whitelistSummary: whitelist?.summary || null,
     }
   }
+
   return {
     ...parsed,
     phase1: {
@@ -72,8 +72,18 @@ function enrichResult(parsed) {
 }
 
 function buildCacheKey(user) {
-  return `resovel_${user.mbti}_${user.age}_${user.energy}_${user.mode}_${user.depthSlider}_${user.langSlider}`
-    .replace(/\s+/g, '_').toLowerCase()
+  return [
+    normalizeValue(user.mbti),
+    normalizeValue(user.age),
+    normalizeValue(user.energy),
+    normalizeValue(user.mode),
+    normalizeSlider(user.depthSlider),
+    normalizeSlider(user.langSlider),
+    normalizeSituation(user.situation),
+    normalizeList(user.goals),
+    normalizeList(user.avoidTypes),
+    normalizeList(user.booksRead),
+  ].join('|')
 }
 
 function getCache(key) {
@@ -81,17 +91,23 @@ function getCache(key) {
     const item = sessionStorage.getItem(key)
     if (!item) return null
     const { data, expiry } = JSON.parse(item)
-    if (Date.now() > expiry) { sessionStorage.removeItem(key); return null }
+    if (Date.now() > expiry) {
+      sessionStorage.removeItem(key)
+      return null
+    }
     return data
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 function setCache(key, data) {
   try {
     sessionStorage.setItem(key, JSON.stringify({
-      data, expiry: Date.now() + 24 * 60 * 60 * 1000,
+      data,
+      expiry: Date.now() + 24 * 60 * 60 * 1000,
     }))
-  } catch { }
+  } catch {}
 }
 
 function getBookLink(title) {
@@ -199,4 +215,29 @@ function hashString(input) {
     hash |= 0
   }
   return Math.abs(hash)
+}
+
+function normalizeValue(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function normalizeList(list = []) {
+  return [...list]
+    .map(item => normalizeValue(item))
+    .filter(Boolean)
+    .sort()
+    .join(',')
+}
+
+function normalizeSlider(value) {
+  const num = Number(value || 0)
+  return String(Math.round(num / 10) * 10)
+}
+
+function normalizeSituation(value = '') {
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .slice(0, 120)
 }

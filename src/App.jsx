@@ -4,7 +4,7 @@
 // 需要安裝：npm install react react-dom
 // ============================================================
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getResovelRecommendation } from './lib/gemini.js'
 
 function formatDate(dateString) {
@@ -64,11 +64,13 @@ export default function App() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const submitLockRef = useRef(false)
 
   const bookshelf = useBookshelf()
 
   const handleSubmit = async () => {
-    if (isSubmitting) return
+    if (submitLockRef.current) return
+    submitLockRef.current = true
     setIsSubmitting(true)
     setScreen('loading')
     setError(null)
@@ -80,6 +82,7 @@ export default function App() {
       setError(err.message)
       setScreen('preferences')
     } finally {
+      submitLockRef.current = false
       setIsSubmitting(false)
     }
   }
@@ -671,14 +674,19 @@ function FeedbackBar({ title, status, onSet }) {
 function BookCard({ book, tag, color, showInsight, bookshelf }) {
   if (!book) return null
   const c = COLOR_MAP[color] || COLOR_MAP.purple
-  const primaryReason = book.whyReadable || book.solves || book.whyBridge || book.whyEvolution || book.reason
   const insightText = book.resovelInsight || book.insight
   return (
     <div style={{ ...styles.bookCard, borderLeftColor: c.bar }}>
       <span style={{ ...styles.bookTag, background: c.tag, color: c.tagText }}>{tag}</span>
       <div style={styles.bookTitle}>{book.title}</div>
       <div style={styles.bookAuthor}>{book.author} 著</div>
-      {primaryReason && <p style={styles.bookReason}>{primaryReason}</p>}
+      {book.whyReadable && <p style={styles.bookReason}>{book.whyReadable}</p>}
+      {book.solves && <p style={styles.bookReason}>{book.solves}</p>}
+      {book.whyBridge && <p style={styles.bookReason}>{book.whyBridge}</p>}
+      {book.whyEvolution && <p style={styles.bookReason}>{book.whyEvolution}</p>}
+      {!book.whyReadable && !book.solves && !book.whyBridge && !book.whyEvolution && book.reason && (
+        <p style={styles.bookReason}>{book.reason}</p>
+      )}
       {showInsight && insightText && (
         <div style={styles.insightBox}>
           <div style={styles.insightLabel}>RESOVEL 洞見</div>
