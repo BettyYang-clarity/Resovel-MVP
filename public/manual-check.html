@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resovel Manual Check</title>
+    <style>
+      :root {
+        --bg: #fafaf8;
+        --panel: #ffffff;
+        --line: #e8e8e5;
+        --text: #1a1a1a;
+        --muted: #777;
+        --accent: #534ab7;
+        --soft: #eeedfe;
+        --ok: #e1f5ee;
+        --warn: #faece7;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+        background: linear-gradient(180deg, #fafaf8 0%, #f5f5f2 100%);
+        color: var(--text);
+      }
+
+      .wrap {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 32px 20px 80px;
+      }
+
+      .hero {
+        margin-bottom: 24px;
+      }
+
+      .eyebrow {
+        display: inline-block;
+        padding: 4px 10px;
+        border: 0.5px solid var(--line);
+        border-radius: 999px;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 12px;
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      h1 {
+        margin: 0 0 10px;
+        font-size: 30px;
+        font-weight: 600;
+      }
+
+      .sub {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+        font-size: 14px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 24px 0 28px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 0 18px;
+        border-radius: 999px;
+        border: 0.5px solid #d8d8d4;
+        text-decoration: none;
+        color: #555;
+        background: rgba(255, 255, 255, 0.84);
+        font-size: 13px;
+      }
+
+      .btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .card {
+        background: rgba(255, 255, 255, 0.88);
+        border: 0.5px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+      }
+
+      .card h2 {
+        margin: 0 0 10px;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+        font-size: 13px;
+      }
+
+      .list {
+        margin: 14px 0 0;
+        padding-left: 18px;
+        color: var(--text);
+        line-height: 1.75;
+        font-size: 13px;
+      }
+
+      .list li + li {
+        margin-top: 8px;
+      }
+
+      .tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .tag {
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        border: 0.5px solid var(--line);
+      }
+
+      .tag.ok {
+        background: var(--ok);
+        color: #085041;
+      }
+
+      .tag.soft {
+        background: var(--soft);
+        color: #3c3489;
+      }
+
+      .tag.warn {
+        background: var(--warn);
+        color: #993c1d;
+      }
+
+      .check {
+        margin-top: 14px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .check label {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        font-size: 13px;
+        line-height: 1.65;
+        color: var(--text);
+      }
+
+      .check input {
+        margin-top: 2px;
+      }
+
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        background: #f5f5f2;
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="hero">
+        <div class="eyebrow">MANUAL CHECK</div>
+        <h1>Resovel 手動驗收頁</h1>
+        <p class="sub">
+          這頁是給你快速確認我這輪改動用的。<br />
+          目前改動集中在 4 個點：MBTI 能量條、書卡收藏日期、Review Modal 精簡調整、診斷結果分享按鈕。
+        </p>
+      </section>
+
+      <div class="actions">
+        <a class="btn primary" href="/" target="_blank" rel="noreferrer">打開主頁</a>
+        <a class="btn" href="http://127.0.0.1:5173/" target="_blank" rel="noreferrer">localhost 主站</a>
+        <a class="btn" href="http://127.0.0.1:5173/manual-check.html" target="_blank" rel="noreferrer">重新打開這頁</a>
+      </div>
+
+      <div class="grid">
+        <section class="card">
+          <h2>這次我有改哪些地方</h2>
+          <ul class="list">
+            <li>MBTI 能量條：從中線出發，避免右側特質看起來像空條。</li>
+            <li>書單卡片：補上 <span class="mono">addedAt</span> 對應的收藏日期，格式是 <span class="mono">YYYY/MM/DD</span>。</li>
+            <li>Review Modal：保留原本風格，只把推薦按鈕加入 <span class="mono">👍 / 👎</span>，並讓星星評分更緊湊。</li>
+            <li>診斷結果頁：加上「分享我的診斷結果」按鈕，優先使用 Web Share API，否則 fallback 成複製文案提示。</li>
+          </ul>
+          <div class="tag-row">
+            <span class="tag soft">盡量不改版面</span>
+            <span class="tag ok">只改指定功能</span>
+            <span class="tag warn">仍建議你親自走一次流程</span>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>驗收流程 A: MBTI 能量條</h2>
+          <p>從主頁進到偏好頁，使用快速測驗拿到結果，重點看右側特質主導時，條不能再看起來像空的。</p>
+          <ul class="list">
+            <li>進入 MBTI 快速測驗。</li>
+            <li>故意選幾題偏向 <span class="mono">I / S / T / J</span>。</li>
+            <li>看結果頁的條狀圖：紫色填充應該從中間往左右延伸，不是永遠只從左往右。</li>
+            <li>左右標籤中，主導那一側文字會稍微比較明顯。</li>
+          </ul>
+          <div class="check">
+            <label><input type="checkbox" /> 右側特質主導時，能量條不再是空白。</label>
+            <label><input type="checkbox" /> 整體仍維持 5px 細條感，沒有變厚重。</label>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>驗收流程 B: 書卡收藏日期</h2>
+          <p>從結果頁把書加入書單，再打開書單頁確認書卡資訊。</p>
+          <ul class="list">
+            <li>任選一本到書單。</li>
+            <li>打開「我的書單」。</li>
+            <li>確認書名與作者下方有一行小字日期。</li>
+            <li>日期格式應該是 <span class="mono">2026/04/05</span> 這種樣式。</li>
+          </ul>
+          <div class="check">
+            <label><input type="checkbox" /> 書卡有顯示收藏日期。</label>
+            <label><input type="checkbox" /> 日期字級很小、偏灰，不會搶畫面。</label>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>驗收流程 C: Review Modal</h2>
+          <p>從書單把書標成讀完，會打開心得彈窗，請確認只做了精簡調整，沒有破壞原本語氣。</p>
+          <ul class="list">
+            <li>把一本書標記成「讀完」。</li>
+            <li>檢查彈窗裡是否有推薦按鈕，而且是 <span class="mono">👍 / 👎</span>。</li>
+            <li>看星星評分區：比原本更緊湊，垂直空間更少。</li>
+            <li>送出後再點「編輯心得」，確認原先內容會被帶回來。</li>
+          </ul>
+          <div class="check">
+            <label><input type="checkbox" /> 推薦按鈕有出現，而且點擊狀態正常。</label>
+            <label><input type="checkbox" /> 編輯心得時，先前評分/推薦/內容會保留。</label>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>驗收流程 D: 分享按鈕</h2>
+          <p>在診斷結果頁測試分享按鈕，預期是保留既有按鈕風格，只多一顆同系統按鈕。</p>
+          <ul class="list">
+            <li>進到診斷結果頁。</li>
+            <li>確認「分享我的診斷結果」按鈕外觀和原本次要按鈕一致。</li>
+            <li>點擊後，手機上通常會出分享面板；桌機若不支援，應顯示提示。</li>
+          </ul>
+          <div class="check">
+            <label><input type="checkbox" /> 分享按鈕外觀沒有破壞整體平衡。</label>
+            <label><input type="checkbox" /> 點擊後至少有回饋訊息，不會像沒反應。</label>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>手動檢查入口</h2>
+          <p>
+            你可以直接打開這個網址開始驗收：<br />
+            <span class="mono">http://127.0.0.1:5173/manual-check.html</span>
+          </p>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

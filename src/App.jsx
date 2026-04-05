@@ -7,7 +7,27 @@
 import { useState, useEffect } from 'react'
 import { getResovelRecommendation } from './lib/gemini.js'
 
+function formatDate(dateString) {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  if (Number.isNaN(date.getTime())) return ''
 
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}/${month}/${day}`
+}
+
+function getTraitBarStyle(pct) {
+  const clamped = Math.max(0, Math.min(100, pct))
+  const offset = Math.abs(clamped - 50)
+  const steppedOffset = Math.round(offset / 10) * 10
+
+  return {
+    width: `${steppedOffset}%`,
+    left: clamped >= 50 ? `${50 - steppedOffset}%` : '50%',
+  }
+}
 
 function useBookshelf() {
   const [shelf, setShelf] = useState({})
@@ -173,6 +193,7 @@ function OnboardingScreen({ onNext }) {
 // 畫面二：偏好設定
 // ══════════════════════════════════════════════
 function PreferencesScreen({ user, setUser, onSubmit, error }) {
+  const [selectedSituation, setSelectedSituation] = useState(null)
   const update = (key, val) => setUser(prev => ({ ...prev, [key]: val }))
   const toggleArr = (key, val) => setUser(prev => ({
     ...prev,
@@ -205,7 +226,17 @@ function PreferencesScreen({ user, setUser, onSubmit, error }) {
         />
         {user.showMBTIQuiz && (
           <div style={styles.quizBox}>
-            <div style={styles.quizBoxTitle}>6 題快速判斷你的 MBTI 傾向</div>
+            <div style={styles.quizBoxTitle}>7 題快速判斷你的 MBTI 傾向</div>
+            <div style={{
+              fontSize: 11,
+              color: '#888',
+              lineHeight: 1.6,
+              marginBottom: 12,
+              marginTop: -8,
+            }}>
+              MBTI 測驗是作為閱讀推薦的輔助參考，不是完整的人格定義。
+              如果你覺得結果沒有完全貼近自己，也歡迎之後重新作答比較看看。
+            </div>
             <MBTIQuiz
               onComplete={(mbti) => {
                 setUser(prev => ({ ...prev, mbti, showMBTIQuiz: false }))
@@ -248,11 +279,27 @@ function PreferencesScreen({ user, setUser, onSubmit, error }) {
       {/* 情境輸入（解決問題模式才顯示） */}
       {user.mode === 'problem' && (
         <Section label="你現在的狀況">
+          <div style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>
+            先選一個最接近你現在狀態的情境，再依需要微調文字。
+          </div>
+          <SituationPicker
+            selected={selectedSituation}
+            onSelect={setSelectedSituation}
+            onTextFill={(text) => {
+              update('situation', text)
+            }}
+          />
+          <div style={{ fontSize: 12, color: '#888', margin: '12px 0 8px' }}>
+            也可以直接修改下面內容，寫得更貼近你現在的情況。
+          </div>
           <textarea
             style={styles.textarea}
             placeholder="例如：剛換工作，感覺很迷茫，不確定方向..."
             value={user.situation}
-            onChange={e => update('situation', e.target.value)}
+            onChange={e => {
+              update('situation', e.target.value)
+              setSelectedSituation(null)
+            }}
             rows={3}
           />
         </Section>
@@ -426,7 +473,6 @@ function ResultScreen({ result, user, bookshelf, setScreen, onAdjust, onReset })
         </button>
       </div>
       <p style={{ ...styles.hint, marginTop: 12 }}>書單已儲存 · 下週一會有新推薦</p>
-
       <div style={{ marginTop: 24, padding: '20px', background: '#FBEAF0', borderRadius: 12, textAlign: 'center', border: '1px solid #F5D3DE' }}>
         <div style={{ fontSize: 14, color: '#993556', fontWeight: 600, marginBottom: 8 }}>💖 幫助我們做得更好</div>
         <div style={{ fontSize: 12, color: '#993556', opacity: 0.85, marginBottom: 16 }}>
@@ -550,6 +596,30 @@ function PreviewText({ user }) {
   )
 }
 
+function SituationPicker({ selected, onSelect, onTextFill }) {
+  return (
+    <div style={styles.situationGrid}>
+      {SITUATION_PRESETS.map((s, i) => (
+        <button
+          key={i}
+          style={{
+            ...styles.situationBtn,
+            ...(selected === i ? styles.situationBtnSelected : {}),
+          }}
+          onClick={() => {
+            onSelect(i)
+            onTextFill(s.text)
+          }}
+        >
+          <span style={{ fontSize: 18, marginBottom: 4, display: 'block' }}>{s.emoji}</span>
+          <span style={styles.situationBtnLabel}>{s.label}</span>
+          <span style={styles.situationBtnDesc}>{s.desc}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function PhaseLabel({ number, title, subtitle }) {
   return (
     <div style={{ margin: '24px 0 12px' }}>
@@ -595,19 +665,18 @@ function FeedbackBar({ title, status, onSet }) {
 function BookCard({ book, tag, color, showInsight, bookshelf }) {
   if (!book) return null
   const c = COLOR_MAP[color] || COLOR_MAP.purple
+  const primaryReason = book.whyReadable || book.solves || book.whyBridge || book.whyEvolution || book.reason
+  const insightText = book.resovelInsight || book.insight
   return (
     <div style={{ ...styles.bookCard, borderLeftColor: c.bar }}>
       <span style={{ ...styles.bookTag, background: c.tag, color: c.tagText }}>{tag}</span>
       <div style={styles.bookTitle}>{book.title}</div>
       <div style={styles.bookAuthor}>{book.author} 著</div>
-      {book.whyReadable && <p style={styles.bookReason}>{book.whyReadable}</p>}
-      {book.solves && <p style={styles.bookReason}>{book.solves}</p>}
-      {book.whyBridge && <p style={styles.bookReason}>{book.whyBridge}</p>}
-      {book.whyEvolution && <p style={styles.bookReason}>{book.whyEvolution}</p>}
-      {showInsight && book.resovelInsight && (
+      {primaryReason && <p style={styles.bookReason}>{primaryReason}</p>}
+      {showInsight && insightText && (
         <div style={styles.insightBox}>
           <div style={styles.insightLabel}>RESOVEL 洞見</div>
-          <div style={styles.insightText}>{book.resovelInsight}</div>
+          <div style={styles.insightText}>{insightText}</div>
         </div>
       )}
       {book.backup && (
@@ -662,6 +731,51 @@ const GOAL_OPTIONS = [
 const AVOID_OPTIONS = [
   '純學術論文風', '宗教靈性類', '過於勵志雞湯',
   '政治相關', '純商業數字', '翻譯腔太重',
+]
+
+const SITUATION_PRESETS = [
+  {
+    emoji: '🌀',
+    label: '卡住迷惘',
+    desc: '不知道下一步該往哪裡走，心裡有點亂。',
+    text: '最近有點卡住和迷惘，不太確定下一步該往哪裡走，想透過閱讀重新整理自己。',
+  },
+  {
+    emoji: '💼',
+    label: '工作壓力',
+    desc: '事情很多、腦袋很滿，想找回穩定節奏。',
+    text: '最近工作壓力有點大，常常覺得腦袋停不下來，想找一本能幫我整理節奏的書。',
+  },
+  {
+    emoji: '💔',
+    label: '關係困擾',
+    desc: '在人際或親密關係裡反覆內耗，想看清楚自己。',
+    text: '最近在人際或關係裡有些困擾，情緒常被牽動，想透過閱讀釐清自己的感受。',
+  },
+  {
+    emoji: '🌱',
+    label: '想重新開始',
+    desc: '正在轉換階段，想讓自己慢慢長回力量。',
+    text: '我正處在一個新的階段，想重新開始，也想找到能陪我慢慢建立力量的書。',
+  },
+  {
+    emoji: '🫧',
+    label: '只想喘口氣',
+    desc: '最近有點累，想被接住，不想再被推著走。',
+    text: '最近有點累，只想先喘口氣，想找一本可以安撫情緒、陪我慢下來的書。',
+  },
+  {
+    emoji: '🔍',
+    label: '想更懂自己',
+    desc: '想認識自己的模式、情緒與盲點。',
+    text: '最近很想更了解自己，不管是情緒、關係還是慣性模式，都想透過閱讀看得更清楚。',
+  },
+  {
+    emoji: '🔥',
+    label: '想突破現況',
+    desc: '知道自己該改變了，想要一點推力往前走。',
+    text: '我知道自己差不多該改變了，想找一本能幫我突破現況、重新往前走的書。',
+  },
 ]
 
 function getDefaultUser() {
@@ -791,6 +905,7 @@ function BookshelfScreen({ bookshelf, onBack }) {
       {reviewTarget && (
         <ReviewModal
           bookTitle={reviewTarget}
+          initialReview={reviews[reviewTarget]}
           onSubmit={(data) => handleSubmitReview(reviewTarget, data)}
           onClose={() => setReviewTarget(null)}
         />
@@ -819,6 +934,7 @@ function ShelfGroup({ label, books, status, config, reviews, bookshelf, onMarkDo
 }
 
 function ShelfBookCard({ item, status, config, review, bookshelf, onMarkDone }) {
+  const addedDate = formatDate(item.addedAt)
   const bookLink = item.bookLink || `https://search.books.com.tw/search/query/key/${encodeURIComponent(item.title)}/cat/all`
   const googleLink = item.googleLink || `https://www.google.com/search?q=${encodeURIComponent(item.title + ' 書評')}`
 
@@ -840,8 +956,11 @@ function ShelfBookCard({ item, status, config, review, bookshelf, onMarkDone }) 
         </button>
       </div>
 
-      <div style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A', marginBottom: 2 }}>
-        {item.title}
+      <div style={styles.shelfTitleRow}>
+        <div style={styles.shelfBookTitle}>{item.title}</div>
+        {addedDate && !review && (
+          <div style={styles.shelfMetaText}>{addedDate}</div>
+        )}
       </div>
       {item.author && (
         <div style={{ fontSize: 12, color: '#AAA', marginBottom: 10 }}>{item.author} 著</div>
@@ -849,20 +968,27 @@ function ShelfBookCard({ item, status, config, review, bookshelf, onMarkDone }) 
 
       {status === 'done' && review && (
         <div style={styles.reviewDisplay}>
-          <div style={{ fontSize: 15, marginBottom: 4 }}>
-            {'⭐'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+          <div style={styles.reviewHeaderRow}>
+            {addedDate ? (
+              <div style={styles.shelfMetaText}>{addedDate}</div>
+            ) : (
+              <div />
+            )}
+            <div style={styles.reviewStars}>
+              {'⭐'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+            </div>
           </div>
-          {review.liked !== null && (
-            <span style={{
-              fontSize: 11, fontWeight: 500,
-              padding: '2px 8px', borderRadius: 99,
-              background: review.liked ? '#E1F5EE' : '#FCEBEB',
-              color: review.liked ? '#085041' : '#A32D2D',
-              marginBottom: 6, display: 'inline-block',
-            }}>
-              {review.liked ? '❤️ 喜歡' : '👎 不太喜歡'}
-            </span>
-          )}
+          <div style={styles.reviewStatusRow}>
+            {review.liked === true && (
+              <span style={{ ...styles.reviewStatusChip, ...styles.reviewStatusChipLiked }}>❤️ 喜歡</span>
+            )}
+            {review.liked === false && (
+              <span style={{ ...styles.reviewStatusChip, ...styles.reviewStatusChipDisliked }}>👎 不喜歡</span>
+            )}
+            {review.recommend && (
+              <span style={{ ...styles.reviewStatusChip, ...styles.reviewStatusChipRecommend }}>↗ 推薦給其他人</span>
+            )}
+          </div>
           {review.note && (
             <div style={{ fontSize: 13, color: '#666', lineHeight: 1.6, marginTop: 6 }}>
               {review.note}
@@ -909,11 +1035,12 @@ function ShelfBookCard({ item, status, config, review, bookshelf, onMarkDone }) 
   )
 }
 
-function ReviewModal({ bookTitle, onSubmit, onClose }) {
-  const [liked, setLiked] = useState(null)
-  const [rating, setRating] = useState(0)
-  const [note, setNote] = useState('')
-  const [isPublic, setIsPublic] = useState(true)
+function ReviewModal({ bookTitle, initialReview, onSubmit, onClose }) {
+  const [liked, setLiked] = useState(initialReview?.liked ?? null)
+  const [recommend, setRecommend] = useState(initialReview?.recommend ?? false)
+  const [rating, setRating] = useState(initialReview?.rating ?? 0)
+  const [note, setNote] = useState(initialReview?.note ?? '')
+  const [isPublic, setIsPublic] = useState(initialReview?.isPublic ?? true)
 
   const canSubmit = rating > 0
 
@@ -928,21 +1055,30 @@ function ReviewModal({ bookTitle, onSubmit, onClose }) {
         </div>
 
         <div style={styles.modalSectionLabel}>你喜歡這本書嗎？</div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
           {[
-            { val: true,  label: '❤️ 喜歡',     activeStyle: { background: '#E1F5EE', borderColor: '#1D9E75', color: '#085041' } },
-            { val: false, label: '👎 不太喜歡', activeStyle: { background: '#FCEBEB', borderColor: '#E24B4A', color: '#A32D2D' } },
+            { key: 'liked', val: true, label: '❤️ 喜歡', activeStyle: { background: '#E1F5EE', borderColor: '#1D9E75', color: '#085041' } },
+            { key: 'disliked', val: false, label: '👎 不喜歡', activeStyle: { background: '#FCEBEB', borderColor: '#E24B4A', color: '#A32D2D' } },
+            { key: 'recommend', val: true, label: '↗ 推薦給其他人', activeStyle: { background: '#EEEDFE', borderColor: '#7F77DD', color: '#3C3489' } },
           ].map(o => (
             <button
-              key={String(o.val)}
+              key={o.key}
               style={{
                 flex: 1, padding: '10px', borderRadius: 10,
                 border: '0.5px solid #DDD',
                 background: 'transparent', fontSize: 13, cursor: 'pointer',
-                fontWeight: liked === o.val ? 500 : 400,
-                ...(liked === o.val ? o.activeStyle : {}),
+                fontWeight: (o.key === 'recommend' ? recommend : liked === o.val) ? 500 : 400,
+                ...(o.key === 'recommend'
+                  ? (recommend ? o.activeStyle : {})
+                  : (liked === o.val ? o.activeStyle : {})),
               }}
-              onClick={() => setLiked(liked === o.val ? null : o.val)}
+              onClick={() => {
+                if (o.key === 'recommend') {
+                  setRecommend(prev => !prev)
+                } else {
+                  setLiked(liked === o.val ? null : o.val)
+                }
+              }}
             >
               {o.label}
             </button>
@@ -950,11 +1086,11 @@ function ReviewModal({ bookTitle, onSubmit, onClose }) {
         </div>
 
         <div style={styles.modalSectionLabel}>評分（必填）</div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
           {[1,2,3,4,5].map(n => (
             <span
               key={n}
-              style={{ fontSize: 26, cursor: 'pointer', opacity: rating >= n ? 1 : 0.25, transition: 'opacity .1s' }}
+              style={{ fontSize: 20, cursor: 'pointer', opacity: rating >= n ? 1 : 0.25, transition: 'opacity .1s', lineHeight: 1 }}
               onClick={() => setRating(n)}
             >
               ⭐
@@ -997,7 +1133,7 @@ function ReviewModal({ bookTitle, onSubmit, onClose }) {
         <button
           style={{ ...styles.primaryBtn, opacity: canSubmit ? 1 : 0.4 }}
           disabled={!canSubmit}
-          onClick={() => onSubmit({ liked, rating, note, isPublic })}
+          onClick={() => onSubmit({ liked, recommend, rating, note, isPublic })}
         >
           送出心得 →
         </button>
@@ -1064,6 +1200,14 @@ const MBTI_QUESTIONS = [
       { label: '直覺有時候比證據更準', desc: '我常靠預感做決定，而且通常對', val: 'N' },
     ],
   },
+  {
+    dim: 'TF2',
+    text: '當你做決定時，你更在意什麼？',
+    opts: [
+      { label: '這樣做合不合理，是否符合原則', desc: '我會先確認判斷邏輯是否站得住腳', val: 'T' },
+      { label: '這樣做會不會影響別人的感受', desc: '我重視情緒與關係是否被好好照顧', val: 'F' },
+    ],
+  },
 ]
 
 const MBTI_INFO = {
@@ -1091,21 +1235,30 @@ function calculateMBTI(answers) {
   if (answers.EI2 === 'E') scores.E += 1; else scores.I += 1
   if (answers.SN === 'S') scores.S += 2; else scores.N += 2
   if (answers.SN2 === 'S') scores.S += 1; else scores.N += 1
-  if (answers.TF === 'T') scores.T += 3; else scores.F += 3
+  if (answers.TF === 'T') scores.T += 2; else scores.F += 2
+  if (answers.TF2 === 'T') scores.T += 2; else scores.F += 2
   if (answers.JP === 'J') scores.J += 3; else scores.P += 3
   const e = scores.E >= scores.I ? 'E' : 'I'
   const s = scores.S >= scores.N ? 'S' : 'N'
   const t = scores.T >= scores.F ? 'T' : 'F'
   const j = scores.J >= scores.P ? 'J' : 'P'
+  const pcts = {
+    ei: Math.round(scores.E / (scores.E + scores.I) * 100),
+    sn: Math.round(scores.N / (scores.S + scores.N) * 100),
+    tf: Math.round(scores.F / (scores.T + scores.F) * 100),
+    jp: Math.round(scores.P / (scores.J + scores.P) * 100),
+  }
+  const clarity = {
+    ei: Math.abs(pcts.ei - 50) >= 15,
+    sn: Math.abs(pcts.sn - 50) >= 15,
+    tf: Math.abs(pcts.tf - 50) >= 15,
+    jp: Math.abs(pcts.jp - 50) >= 15,
+  }
   return {
     mbti: e + s + t + j,
     scores,
-    pcts: {
-      ei: Math.round(scores.E / (scores.E + scores.I) * 100),
-      sn: Math.round(scores.N / (scores.S + scores.N) * 100),
-      tf: Math.round(scores.F / (scores.T + scores.F) * 100),
-      jp: Math.round(scores.P / (scores.J + scores.P) * 100),
-    },
+    pcts,
+    clarity,
   }
 }
 
@@ -1135,6 +1288,21 @@ function MBTIQuiz({ onComplete }) {
 
   if (result) {
     const info = MBTI_INFO[result.mbti] || { name: '獨特個體', desc: '你的思維很難被單一類型定義。' }
+    const dimDesc = {
+      ei: result.pcts.ei > 50
+        ? result.clarity.ei ? '明顯偏外向' : '微偏外向'
+        : result.clarity.ei ? '明顯偏內向' : '微偏內向',
+      sn: result.pcts.sn > 50
+        ? result.clarity.sn ? '明顯偏直覺' : '微偏直覺'
+        : result.clarity.sn ? '明顯偏實感' : '微偏實感',
+      tf: result.pcts.tf > 50
+        ? result.clarity.tf ? '明顯偏情感' : '微偏情感'
+        : result.clarity.tf ? '明顯偏思考' : '微偏思考',
+      jp: result.pcts.jp > 50
+        ? result.clarity.jp ? '明顯偏感知' : '微偏感知'
+        : result.clarity.jp ? '明顯偏判斷' : '微偏判斷',
+    }
+
     return (
       <div>
         <div style={styles.quizResultBox}>
@@ -1145,19 +1313,57 @@ function MBTIQuiz({ onComplete }) {
         </div>
         <div style={{ marginBottom: 20 }}>
           {[
-            { left: 'E 外向', right: 'I 內向', pct: result.pcts.ei },
-            { left: 'N 直覺', right: 'S 實感', pct: result.pcts.sn },
-            { left: 'F 情感', right: 'T 思考', pct: result.pcts.tf },
-            { left: 'P 感知', right: 'J 判斷', pct: result.pcts.jp },
+            { left: 'E 外向', right: 'I 內向', pct: result.pcts.ei, desc: dimDesc.ei, clear: result.clarity.ei },
+            { left: 'N 直覺', right: 'S 實感', pct: result.pcts.sn, desc: dimDesc.sn, clear: result.clarity.sn },
+            { left: 'F 情感', right: 'T 思考', pct: result.pcts.tf, desc: dimDesc.tf, clear: result.clarity.tf },
+            { left: 'P 感知', right: 'J 判斷', pct: result.pcts.jp, desc: dimDesc.jp, clear: result.clarity.jp },
           ].map((t, i) => (
-            <div key={i} style={styles.traitRow}>
-              <span style={styles.traitLabel}>{t.left}</span>
-              <div style={styles.traitBar}>
-                <div style={{ ...styles.traitFill, width: t.pct + '%' }} />
+            <div key={i} style={{ marginBottom: 12 }}>
+              <div style={styles.traitRow}>
+                <span style={{ ...styles.traitLabel, ...(t.pct >= 50 ? styles.traitLabelActive : {}) }}>{t.left}</span>
+                <div style={styles.traitBar}>
+                  <div style={styles.traitCenterLine} />
+                  <div style={{ ...styles.traitFill, ...getTraitBarStyle(t.pct) }} />
+                </div>
+                <span style={{ ...styles.traitLabel, textAlign: 'right', ...(t.pct < 50 ? styles.traitLabelActive : {}) }}>{t.right}</span>
               </div>
-              <span style={{ ...styles.traitLabel, textAlign: 'right' }}>{t.right}</span>
+              <div style={{
+                fontSize: 11,
+                textAlign: 'center',
+                marginTop: 3,
+                color: t.clear ? '#534AB7' : '#AAA',
+                fontWeight: t.clear ? 500 : 400,
+              }}>
+                {t.desc}
+                {!t.clear && '，代表你在這一維比較接近中間'}
+              </div>
             </div>
           ))}
+        </div>
+        {!Object.values(result.clarity).every(Boolean) && (
+          <div style={{
+            background: '#FAEEDA',
+            borderRadius: 10,
+            padding: '10px 14px',
+            marginBottom: 16,
+            fontSize: 12,
+            color: '#633806',
+            lineHeight: 1.6,
+          }}>
+            你的部分維度沒有明顯偏向，這是正常的。Resovel 仍會用 {result.mbti} 作為推薦起點，
+            但如果你之後覺得結果不夠貼近，也可以重新作答再比較一次。
+          </div>
+        )}
+        <div style={{
+          fontSize: 11,
+          color: '#AAA',
+          textAlign: 'center',
+          lineHeight: 1.6,
+          marginBottom: 12,
+          padding: '0 8px',
+        }}>
+          MBTI 結果會作為 Resovel 推薦的起點之一，
+          但實際推薦仍會搭配你的當下狀態與閱讀偏好一起判斷。
         </div>
         <button style={styles.primaryBtn} onClick={() => onComplete(result.mbti)}>
           用 {result.mbti} 開始推薦 →
@@ -1172,7 +1378,7 @@ function MBTIQuiz({ onComplete }) {
   return (
     <div>
       <div style={styles.quizProgressBar}>
-        <div style={{ ...styles.quizProgressFill, width: ((cur + 1) / 6 * 100) + '%' }} />
+        <div style={{ ...styles.quizProgressFill, width: ((cur + 1) / MBTI_QUESTIONS.length * 100) + '%' }} />
       </div>
       <div style={styles.quizQNum}>問題 {cur + 1} / {MBTI_QUESTIONS.length}</div>
       <div style={styles.quizQText}>{q.text}</div>
@@ -1423,6 +1629,38 @@ const styles = {
     resize: 'vertical',
     background: '#FFF',
     boxSizing: 'border-box',
+  },
+  situationGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: 8,
+    marginBottom: 4,
+  },
+  situationBtn: {
+    border: '0.5px solid #DDD',
+    borderRadius: 12,
+    padding: '10px 10px 8px',
+    background: '#FFF',
+    cursor: 'pointer',
+    textAlign: 'left',
+    transition: 'all 0.15s',
+  },
+  situationBtnSelected: {
+    borderColor: '#7F77DD',
+    background: '#EEEDFE',
+  },
+  situationBtnLabel: {
+    display: 'block',
+    fontSize: 13,
+    fontWeight: 500,
+    color: '#1A1A1A',
+    marginBottom: 2,
+  },
+  situationBtnDesc: {
+    display: 'block',
+    fontSize: 11,
+    color: '#888',
+    lineHeight: 1.4,
   },
   addBtn: {
     padding: '8px 16px',
@@ -1771,18 +2009,35 @@ const styles = {
     color: '#888',
     minWidth: 48,
   },
+  traitLabelActive: {
+    color: '#3C3489',
+  },
   traitBar: {
     flex: 1,
     height: 5,
-    background: '#E8E8E5',
+    backgroundColor: '#E8E8E5',
+    backgroundImage: 'repeating-linear-gradient(to right, #E8E8E5 0, #E8E8E5 calc(10% - 1px), #F7F7F3 calc(10% - 1px), #F7F7F3 10%)',
     borderRadius: 99,
     overflow: 'hidden',
+    position: 'relative',
+  },
+  traitCenterLine: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: '50%',
+    width: 1,
+    background: 'rgba(127, 119, 221, 0.28)',
+    transform: 'translateX(-50%)',
   },
   traitFill: {
+    position: 'absolute',
+    top: 0,
     height: '100%',
-    background: '#7F77DD',
+    backgroundColor: '#7F77DD',
+    backgroundImage: 'repeating-linear-gradient(to right, #7F77DD 0, #7F77DD calc(10% - 1px), rgba(127, 119, 221, 0.82) calc(10% - 1px), rgba(127, 119, 221, 0.82) 10%)',
     borderRadius: 99,
-    transition: 'width 0.6s ease',
+    transition: 'left 0.6s ease, width 0.6s ease',
   },
 
   // Feedback 樣式
@@ -1882,6 +2137,25 @@ const styles = {
     padding: '14px',
     marginBottom: 10,
   },
+  shelfTitleRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 2,
+  },
+  shelfBookTitle: {
+    fontSize: 16,
+    fontWeight: 600,
+    color: '#1A1A1A',
+    flex: 1,
+    minWidth: 0,
+  },
+  shelfMetaText: {
+    fontSize: 11,
+    color: '#AAA',
+    whiteSpace: 'nowrap',
+  },
   shelfActionBtn: {
     padding: '7px 14px',
     borderRadius: 99,
@@ -1903,6 +2177,44 @@ const styles = {
     borderRadius: 10,
     padding: '10px 12px',
     marginBottom: 12,
+  },
+  reviewHeaderRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 8,
+  },
+  reviewStars: {
+    fontSize: 15,
+    textAlign: 'right',
+    color: '#6D63D6',
+    letterSpacing: '0.02em',
+  },
+  reviewStatusRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 6,
+  },
+  reviewStatusChip: {
+    fontSize: 11,
+    fontWeight: 500,
+    padding: '2px 8px',
+    borderRadius: 99,
+    display: 'inline-block',
+  },
+  reviewStatusChipLiked: {
+    background: '#E1F5EE',
+    color: '#085041',
+  },
+  reviewStatusChipDisliked: {
+    background: '#FCEBEB',
+    color: '#A32D2D',
+  },
+  reviewStatusChipRecommend: {
+    background: '#EEEDFE',
+    color: '#3C3489',
   },
   modalOverlay: {
     position: 'fixed',
