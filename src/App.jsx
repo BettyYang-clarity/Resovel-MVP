@@ -11,9 +11,27 @@ import { getResovelRecommendation } from './lib/gemini.js'
 
 function useBookshelf() {
   const [shelf, setShelf] = useState({})
-  const setStatus = (title, status) =>
-    setShelf(prev => ({ ...prev, [title]: status }))
-  const getStatus = (title) => shelf[title] || null
+  // shelf: { [title]: { status, author, bookLink, googleLink, addedAt } }
+  const setStatus = (book, status) => {
+    setShelf(prev => {
+      if (status === null) {
+        const next = { ...prev }
+        delete next[book.title]
+        return next
+      }
+      return {
+        ...prev,
+        [book.title]: {
+          status,
+          author: book.author || '',
+          bookLink: book.bookLink || '',
+          googleLink: book.googleLink || '',
+          addedAt: prev[book.title]?.addedAt || new Date().toISOString(),
+        },
+      }
+    })
+  }
+  const getStatus = (title) => shelf[title]?.status || null
   return { shelf, setStatus, getStatus }
 }
 
@@ -617,7 +635,7 @@ function BookCard({ book, tag, color, showInsight, bookshelf }) {
         <FeedbackBar
           title={book.title}
           status={bookshelf.getStatus(book.title)}
-          onSet={(s) => bookshelf.setStatus(book.title, s)}
+          onSet={(s) => bookshelf.setStatus(book, s)}
         />
       )}
     </div>
@@ -674,12 +692,21 @@ function BookshelfScreen({ bookshelf, onBack }) {
   }
 
   const groups = { want: [], reading: [], done: [], skip: [] }
-  Object.entries(bookshelf.shelf).forEach(([title, status]) => {
-    if (groups[status]) groups[status].push(title)
+  Object.entries(bookshelf.shelf).forEach(([title, data]) => {
+    if (groups[data.status]) groups[data.status].push({ title, ...data })
   })
+  Object.values(groups).forEach(arr =>
+    arr.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt))
+  )
 
   const total = Object.values(bookshelf.shelf).length
   const doneCount = groups.done.length
+
+  const formatDate = (iso) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    return `${d.getMonth() + 1}/${d.getDate()} 加入`
+  }
 
   return (
     <div style={styles.screen}>
@@ -709,26 +736,46 @@ function BookshelfScreen({ bookshelf, onBack }) {
             </div>
           </div>
 
-          {Object.entries(groups).map(([status, titles]) => {
-            if (titles.length === 0) return null
+          {Object.entries(groups).map(([status, books]) => {
+            if (books.length === 0) return null
             const s = STATUS_LABELS[status]
             return (
               <div key={status} style={{ marginBottom: 24 }}>
                 <div style={styles.shelfGroupLabel}>{s.label}</div>
-                {titles.map(title => (
-                  <div key={title} style={styles.shelfItem}>
-                    <span
-                      style={{ ...styles.shelfStatusBadge, background: s.color, color: s.text }}
-                    >
-                      {s.label}
-                    </span>
-                    <span style={styles.shelfTitle}>{title}</span>
-                    <button
-                      style={styles.shelfRemoveBtn}
-                      onClick={() => bookshelf.setStatus(title, null)}
-                    >
-                      ×
-                    </button>
+                {books.map(item => (
+                  <div key={item.title} style={{ ...styles.shelfItem, alignItems: 'flex-start', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ ...styles.shelfStatusBadge, background: s.color, color: s.text }}>
+                          {s.label}
+                        </span>
+                        {item.addedAt && (
+                          <span style={{ fontSize: 11, color: '#bbb' }}>{formatDate(item.addedAt)}</span>
+                        )}
+                      </div>
+                      <button
+                        style={styles.shelfRemoveBtn}
+                        onClick={() => bookshelf.setStatus({ title: item.title }, null)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div style={styles.shelfTitle}>{item.title}</div>
+                    {item.author && (
+                      <div style={{ fontSize: 12, color: '#888' }}>{item.author} 著</div>
+                    )}
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 2 }}>
+                      {item.bookLink && (
+                        <a href={item.bookLink} target="_blank" rel="noopener noreferrer" style={styles.bookLink}>
+                          在博客來搜尋 →
+                        </a>
+                      )}
+                      {item.googleLink && (
+                        <a href={item.googleLink} target="_blank" rel="noopener noreferrer" style={styles.googleLink}>
+                          🔍 Google 搜尋
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -744,9 +791,9 @@ function BookshelfScreen({ bookshelf, onBack }) {
         <div style={{ fontSize: 12, color: '#993556', opacity: 0.85, marginBottom: 16 }}>
           這只是一個 MVP 測試版！如果你喜歡這次的推薦，或是願意參與未來的正式版計畫，請給我們 1 分鐘的寶貴回饋！
         </div>
-        <a 
-          href="https://forms.gle/zaxUokbXSZytioE38" 
-          target="_blank" 
+        <a
+          href="https://forms.gle/zaxUokbXSZytioE38"
+          target="_blank"
           rel="noopener noreferrer"
           style={{ ...styles.primaryBtn, display: 'inline-block', textDecoration: 'none', background: '#A13B5E', color: '#FFF', width: '100%' }}
         >
