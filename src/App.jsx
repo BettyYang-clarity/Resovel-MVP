@@ -684,11 +684,14 @@ function getDefaultUser() {
 // 書單狀態管理畫面
 // ══════════════════════════════════════════════
 function BookshelfScreen({ bookshelf, onBack }) {
-  const STATUS_LABELS = {
-    want:    { label: '想讀',   color: '#FBEAF0', text: '#993556' },
-    reading: { label: '閱讀中', color: '#E1F5EE', text: '#0F6E56' },
-    done:    { label: '已讀完', color: '#EEEDFE', text: '#3C3489' },
-    skip:    { label: '不適合', color: '#F1EFE8', text: '#5F5E5A' },
+  const [reviewTarget, setReviewTarget] = useState(null)
+  const [reviews, setReviews] = useState({})
+
+  const STATUS_CONFIG = {
+    want:    { label: '想讀',   bg: '#FBEAF0', color: '#993556' },
+    reading: { label: '閱讀中', bg: '#E1F5EE', color: '#085041' },
+    done:    { label: '已讀完', bg: '#EEEDFE', color: '#3C3489' },
+    skip:    { label: '不適合', bg: '#F1EFE8', color: '#5F5E5A' },
   }
 
   const groups = { want: [], reading: [], done: [], skip: [] }
@@ -699,106 +702,311 @@ function BookshelfScreen({ bookshelf, onBack }) {
     arr.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt))
   )
 
-  const total = Object.values(bookshelf.shelf).length
-  const doneCount = groups.done.length
+  const counts = {
+    want: groups.want.length,
+    reading: groups.reading.length,
+    done: groups.done.length,
+  }
+  const total = counts.want + counts.reading + counts.done
 
-  const formatDate = (iso) => {
-    if (!iso) return ''
-    const d = new Date(iso)
-    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} 加入`
+  const handleMarkDone = (item) => {
+    bookshelf.setStatus(item, 'done')
+    setReviewTarget(item.title)
+  }
+
+  const handleSubmitReview = (title, reviewData) => {
+    setReviews(prev => ({ ...prev, [title]: reviewData }))
+    setReviewTarget(null)
   }
 
   return (
     <div style={styles.screen}>
       <div style={styles.brand}>Resovel · 我的書單</div>
 
-      {total === 0 ? (
-        <div style={styles.emptyShelf}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>📚</div>
-          <div style={{ fontSize: 15, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-            還沒有收藏任何書<br />回去對書卡按 ❤️ 開始收藏
-          </div>
+      {total > 0 && (
+        <div style={styles.shelfStats}>
+          {[
+            { label: '想讀',   count: counts.want,    color: '#993556', bg: '#FBEAF0' },
+            { label: '閱讀中', count: counts.reading, color: '#085041', bg: '#E1F5EE' },
+            { label: '已讀完', count: counts.done,    color: '#3C3489', bg: '#EEEDFE' },
+          ].map(s => (
+            <div key={s.label} style={{ ...styles.statCard, background: s.bg }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.count}</div>
+              <div style={{ fontSize: 11, color: s.color, opacity: 0.8 }}>{s.label}</div>
+            </div>
+          ))}
         </div>
-      ) : (
-        <>
-          <div style={styles.shelfStats}>
-            <div style={styles.statCard}>
-              <div style={styles.statNum}>{total}</div>
-              <div style={styles.statLabel}>本書</div>
-            </div>
-            <div style={styles.statCard}>
-              <div style={styles.statNum}>{doneCount}</div>
-              <div style={styles.statLabel}>已讀完</div>
-            </div>
-            <div style={styles.statCard}>
-              <div style={styles.statNum}>{groups.reading.length}</div>
-              <div style={styles.statLabel}>閱讀中</div>
-            </div>
-          </div>
-
-          {Object.entries(groups).map(([status, books]) => {
-            if (books.length === 0) return null
-            const s = STATUS_LABELS[status]
-            return (
-              <div key={status} style={{ marginBottom: 24 }}>
-                <div style={styles.shelfGroupLabel}>{s.label}</div>
-                {books.map(item => (
-                  <div key={item.title} style={{ ...styles.shelfItem, alignItems: 'flex-start', flexDirection: 'column', gap: 6 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ ...styles.shelfStatusBadge, background: s.color, color: s.text }}>
-                          {s.label}
-                        </span>
-                        {item.addedAt && (
-                          <span style={{ fontSize: 11, color: '#bbb' }}>{formatDate(item.addedAt)}</span>
-                        )}
-                      </div>
-                      <button
-                        style={styles.shelfRemoveBtn}
-                        onClick={() => bookshelf.setStatus({ title: item.title }, null)}
-                      >
-                        ×
-                      </button>
-                    </div>
-                    <div style={styles.shelfTitle}>{item.title}</div>
-                    {item.author && (
-                      <div style={{ fontSize: 12, color: '#888' }}>{item.author} 著</div>
-                    )}
-                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 2 }}>
-                      {item.bookLink && (
-                        <a href={item.bookLink} target="_blank" rel="noopener noreferrer" style={styles.bookLink}>
-                          在博客來搜尋 →
-                        </a>
-                      )}
-                      {item.googleLink && (
-                        <a href={item.googleLink} target="_blank" rel="noopener noreferrer" style={styles.googleLink}>
-                          🔍 Google 搜尋
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          })}
-        </>
       )}
 
-      <button style={styles.secondaryBtn} onClick={onBack}>← 返回書單</button>
-
-      <div style={{ marginTop: 32, padding: '20px', background: '#FBEAF0', borderRadius: 12, textAlign: 'center', border: '1px solid #F5D3DE' }}>
-        <div style={{ fontSize: 14, color: '#993556', fontWeight: 600, marginBottom: 8 }}>💖 幫助我們做得更好</div>
-        <div style={{ fontSize: 12, color: '#993556', opacity: 0.85, marginBottom: 16 }}>
-          這只是一個 MVP 測試版！如果你喜歡這次的推薦，或是願意參與未來的正式版計畫，請給我們 1 分鐘的寶貴回饋！
+      {total === 0 && (
+        <div style={styles.emptyShelf}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>📚</div>
+          <div style={{ fontSize: 15, color: '#AAA', lineHeight: 1.6 }}>
+            還沒有書單<br />回到推薦結果，對書卡按 ❤️ 開始收藏
+          </div>
+          <button style={{ ...styles.primaryBtn, marginTop: 20 }} onClick={onBack}>
+            去找書 →
+          </button>
         </div>
-        <a
-          href="https://forms.gle/zaxUokbXSZytioE38"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ ...styles.primaryBtn, display: 'inline-block', textDecoration: 'none', background: '#A13B5E', color: '#FFF', width: '100%' }}
+      )}
+
+      {groups.reading.length > 0 && (
+        <ShelfGroup
+          label="閱讀中"
+          books={groups.reading}
+          status="reading"
+          config={STATUS_CONFIG.reading}
+          reviews={reviews}
+          bookshelf={bookshelf}
+          onMarkDone={handleMarkDone}
+        />
+      )}
+
+      {groups.want.length > 0 && (
+        <ShelfGroup
+          label="想讀"
+          books={groups.want}
+          status="want"
+          config={STATUS_CONFIG.want}
+          reviews={reviews}
+          bookshelf={bookshelf}
+          onMarkDone={handleMarkDone}
+        />
+      )}
+
+      {groups.done.length > 0 && (
+        <ShelfGroup
+          label="已讀完"
+          books={groups.done}
+          status="done"
+          config={STATUS_CONFIG.done}
+          reviews={reviews}
+          bookshelf={bookshelf}
+          onMarkDone={handleMarkDone}
+        />
+      )}
+
+      <button style={styles.secondaryBtn} onClick={onBack}>← 返回</button>
+
+      {reviewTarget && (
+        <ReviewModal
+          bookTitle={reviewTarget}
+          onSubmit={(data) => handleSubmitReview(reviewTarget, data)}
+          onClose={() => setReviewTarget(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function ShelfGroup({ label, books, status, config, reviews, bookshelf, onMarkDone }) {
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={styles.shelfGroupLabel}>{label}</div>
+      {books.map(item => (
+        <ShelfBookCard
+          key={item.title}
+          item={item}
+          status={status}
+          config={config}
+          review={reviews[item.title]}
+          bookshelf={bookshelf}
+          onMarkDone={onMarkDone}
+        />
+      ))}
+    </div>
+  )
+}
+
+function ShelfBookCard({ item, status, config, review, bookshelf, onMarkDone }) {
+  const bookLink = item.bookLink || `https://search.books.com.tw/search/query/key/${encodeURIComponent(item.title)}/cat/all`
+  const googleLink = item.googleLink || `https://www.google.com/search?q=${encodeURIComponent(item.title + ' 書評')}`
+
+  return (
+    <div style={styles.shelfCard}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <span style={{
+          fontSize: 11, fontWeight: 500,
+          padding: '3px 10px', borderRadius: 99,
+          background: config.bg, color: config.color,
+        }}>
+          {config.label}
+        </span>
+        <button
+          style={{ background: 'none', border: 'none', color: '#CCC', fontSize: 16, cursor: 'pointer', padding: '0 4px' }}
+          onClick={() => bookshelf.setStatus({ title: item.title }, null)}
         >
-          📝 填寫試用心得 →
+          ×
+        </button>
+      </div>
+
+      <div style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A', marginBottom: 2 }}>
+        {item.title}
+      </div>
+      {item.author && (
+        <div style={{ fontSize: 12, color: '#AAA', marginBottom: 10 }}>{item.author} 著</div>
+      )}
+
+      {status === 'done' && review && (
+        <div style={styles.reviewDisplay}>
+          <div style={{ fontSize: 15, marginBottom: 4 }}>
+            {'⭐'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+          </div>
+          {review.liked !== null && (
+            <span style={{
+              fontSize: 11, fontWeight: 500,
+              padding: '2px 8px', borderRadius: 99,
+              background: review.liked ? '#E1F5EE' : '#FCEBEB',
+              color: review.liked ? '#085041' : '#A32D2D',
+              marginBottom: 6, display: 'inline-block',
+            }}>
+              {review.liked ? '❤️ 喜歡' : '👎 不太喜歡'}
+            </span>
+          )}
+          {review.note && (
+            <div style={{ fontSize: 13, color: '#666', lineHeight: 1.6, marginTop: 6 }}>
+              {review.note}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {status === 'want' && (
+          <button
+            style={styles.shelfActionBtn}
+            onClick={() => bookshelf.setStatus(item, 'reading')}
+          >
+            開始閱讀
+          </button>
+        )}
+        {status === 'reading' && (
+          <button
+            style={{ ...styles.shelfActionBtn, ...styles.shelfActionBtnPrimary }}
+            onClick={() => onMarkDone(item)}
+          >
+            ✓ 讀完了，寫心得
+          </button>
+        )}
+        {status === 'done' && (
+          <button
+            style={styles.shelfActionBtn}
+            onClick={() => onMarkDone(item)}
+          >
+            {review ? '編輯心得' : '寫心得'}
+          </button>
+        )}
+        <a href={bookLink} target="_blank" rel="noopener noreferrer"
+          style={{ ...styles.shelfActionBtn, textDecoration: 'none', textAlign: 'center' }}>
+          在博客來搜尋
         </a>
+        <a href={googleLink} target="_blank" rel="noopener noreferrer"
+          style={{ ...styles.shelfActionBtn, textDecoration: 'none', textAlign: 'center' }}>
+          Google 搜尋
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function ReviewModal({ bookTitle, onSubmit, onClose }) {
+  const [liked, setLiked] = useState(null)
+  const [rating, setRating] = useState(0)
+  const [note, setNote] = useState('')
+  const [isPublic, setIsPublic] = useState(true)
+
+  const canSubmit = rating > 0
+
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.modalBox}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A', marginBottom: 4 }}>
+          讀完了！說說感想
+        </div>
+        <div style={{ fontSize: 12, color: '#888', marginBottom: 20 }}>
+          《{bookTitle}》
+        </div>
+
+        <div style={styles.modalSectionLabel}>你喜歡這本書嗎？</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {[
+            { val: true,  label: '❤️ 喜歡',     activeStyle: { background: '#E1F5EE', borderColor: '#1D9E75', color: '#085041' } },
+            { val: false, label: '👎 不太喜歡', activeStyle: { background: '#FCEBEB', borderColor: '#E24B4A', color: '#A32D2D' } },
+          ].map(o => (
+            <button
+              key={String(o.val)}
+              style={{
+                flex: 1, padding: '10px', borderRadius: 10,
+                border: '0.5px solid #DDD',
+                background: 'transparent', fontSize: 13, cursor: 'pointer',
+                fontWeight: liked === o.val ? 500 : 400,
+                ...(liked === o.val ? o.activeStyle : {}),
+              }}
+              onClick={() => setLiked(liked === o.val ? null : o.val)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={styles.modalSectionLabel}>評分（必填）</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {[1,2,3,4,5].map(n => (
+            <span
+              key={n}
+              style={{ fontSize: 26, cursor: 'pointer', opacity: rating >= n ? 1 : 0.25, transition: 'opacity .1s' }}
+              onClick={() => setRating(n)}
+            >
+              ⭐
+            </span>
+          ))}
+        </div>
+
+        <div style={styles.modalSectionLabel}>簡短心得（選填）</div>
+        <textarea
+          style={{ ...styles.textarea, marginBottom: 14, fontSize: 13, minHeight: 72 }}
+          placeholder="這本書對你有什麼影響？一句話也可以..."
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          rows={3}
+        />
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+          <div>
+            <div style={{ fontSize: 13, color: '#1A1A1A' }}>公開分享給其他讀者</div>
+            <div style={{ fontSize: 11, color: '#AAA' }}>讓同 MBTI 的人看到你的心得</div>
+          </div>
+          <div
+            style={{
+              width: 40, height: 22, borderRadius: 99, cursor: 'pointer',
+              background: isPublic ? '#534AB7' : '#DDD',
+              position: 'relative', transition: 'background .2s',
+            }}
+            onClick={() => setIsPublic(!isPublic)}
+          >
+            <div style={{
+              position: 'absolute', top: 2,
+              left: isPublic ? 20 : 2,
+              width: 18, height: 18,
+              background: '#fff', borderRadius: '50%',
+              transition: 'left .2s',
+            }} />
+          </div>
+        </div>
+
+        <button
+          style={{ ...styles.primaryBtn, opacity: canSubmit ? 1 : 0.4 }}
+          disabled={!canSubmit}
+          onClick={() => onSubmit({ liked, rating, note, isPublic })}
+        >
+          送出心得 →
+        </button>
+        <button
+          style={{ ...styles.secondaryBtn, marginTop: 10 }}
+          onClick={onClose}
+        >
+          之後再寫
+        </button>
       </div>
     </div>
   )
@@ -1006,6 +1214,7 @@ const styles = {
     minHeight: '100vh',
     backgroundColor: '#FAFAF8',
     fontFamily: "'Noto Sans TC', sans-serif",
+    position: 'relative',
   },
   screen: {
     padding: '24px 20px 48px',
@@ -1664,5 +1873,61 @@ const styles = {
     fontSize: 16,
     cursor: 'pointer',
     padding: '0 4px',
+  },
+  // 書單頁升級樣式
+  shelfCard: {
+    background: '#FFF',
+    border: '0.5px solid #E8E8E5',
+    borderRadius: 14,
+    padding: '14px',
+    marginBottom: 10,
+  },
+  shelfActionBtn: {
+    padding: '7px 14px',
+    borderRadius: 99,
+    border: '0.5px solid #DDD',
+    background: 'transparent',
+    color: '#666',
+    fontSize: 12,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  shelfActionBtnPrimary: {
+    background: '#534AB7',
+    color: '#EEEDFE',
+    borderColor: '#534AB7',
+    fontWeight: 500,
+  },
+  reviewDisplay: {
+    background: '#F5F5F2',
+    borderRadius: 10,
+    padding: '10px 12px',
+    marginBottom: 12,
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: 'rgba(0,0,0,0.4)',
+    display: 'flex',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    zIndex: 100,
+  },
+  modalBox: {
+    background: '#FAFAF8',
+    borderRadius: '16px 16px 0 0',
+    padding: '20px 20px 36px',
+    width: '100%',
+    maxWidth: 480,
+    maxHeight: '85vh',
+    overflowY: 'auto',
+  },
+  modalSectionLabel: {
+    fontSize: 11,
+    fontWeight: 500,
+    letterSpacing: '0.08em',
+    color: '#AAA',
+    marginBottom: 10,
+    textTransform: 'uppercase',
   },
 }
