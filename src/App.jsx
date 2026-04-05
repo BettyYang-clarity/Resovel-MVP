@@ -705,7 +705,7 @@ function BookshelfScreen({ bookshelf, onBack }) {
   const formatDate = (iso) => {
     if (!iso) return ''
     const d = new Date(iso)
-    return `${d.getMonth() + 1}/${d.getDate()} 加入`
+    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} 加入`
   }
 
   return (
