@@ -1,9 +1,9 @@
-﻿// ============================================================
+// ============================================================
 // RESOVEL · Gemini API 呼叫器（v2 · 安全版）
 // 改成呼叫自己的後端，不再直接暴露 API Key
 // ============================================================
 
-import { buildResovelPrompt, BOOK_WHITELIST, getGoogleSearchLink } from './resovel-prompt.js'
+import { buildResovelPrompt, BOOK_WHITELIST, lookupWhitelist, getGoogleSearchLink } from './resovel-prompt.js'
 
 export async function getResovelRecommendation(user) {
   const cacheKey = buildCacheKey(user)
@@ -48,13 +48,14 @@ export async function getResovelRecommendation(user) {
 function enrichResult(parsed) {
   const enrichBook = (book) => {
     if (!book?.title) return book
-    const whitelist = BOOK_WHITELIST[book.title]
+    const whitelist = lookupWhitelist(book.title)
     return {
       ...book,
       bookLink: getBookLink(book.title),
       googleLink: getGoogleSearchLink(book.title, book.author),
       confirmed: whitelist ? true : book.confirmed,
       whitelistSummary: whitelist?.summary || null,
+      whitelistTags: whitelist?.tags || [],
     }
   }
 
